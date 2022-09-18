@@ -67,6 +67,8 @@ RUN	rm /etc/mysql/my.cnf && \
 FROM build2 as build3
 RUN	apt-get -y install python3-pip && \
 	apt-get -y install libopenblas-dev liblapack-dev libblas-dev && \
+	pip3 install --upgrade pip && \
+	pip3 install --upgrade Pillow && \
 	pip3 install future && \
 	pip3 install /root/zmeventnotification && \
 	pip3 install face_recognition && \
