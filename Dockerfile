@@ -147,7 +147,7 @@ RUN	cd /root && \
 		-D PYTHON_EXECUTABLE=/usr/bin/python3 \
 		-D PYTHON2_EXECUTABLE=/usr/bin/python2 \
 		-D BUILD_EXAMPLES=OFF .. && \
-	make -j4 && \
+	make -j $(nproc) && \
 	make install && \
 	cd /root && \
 	rm -r opencv*
