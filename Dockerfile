@@ -137,6 +137,13 @@ RUN	cd /root && \
 	mkdir build && \
 	cd build && \
 	cmake \
+  		-D WITH_CUDA="ON" \
+		-D WITH_CUDNN="ON" \
+		-D WITH_CUBLAS="1" \
+		-D WITH_FFMPEG=OFF \
+		-D OPENCV_DNN_CUDA="ON" \
+		-D ENABLE_FAST_MATH=1 \
+		-D CUDA_FAST_MATH="1" \
 		-D CMAKE_BUILD_TYPE=RELEASE \
 		-D CMAKE_INSTALL_PREFIX=/usr/local \
 		-D INSTALL_PYTHON_EXAMPLES=OFF \
