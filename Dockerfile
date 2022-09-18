@@ -152,6 +152,8 @@ RUN	cd /root && \
 		-D OPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules \
 		-D HAVE_opencv_python3=ON \
 		-D PYTHON_EXECUTABLE=/usr/bin/python3 \
+		#https://github.com/opencv/opencv/issues/22157 dist-packages instead of site-packages
+		-D PYTHON3_PACKAGES_PATH=/usr/local/lib/python3.8/dist-packages \
 		-D PYTHON2_EXECUTABLE=/usr/bin/python2 \
 		-D BUILD_EXAMPLES=OFF .. && \
 	make -j $(nproc) && \
