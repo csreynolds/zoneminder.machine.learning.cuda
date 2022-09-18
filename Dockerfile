@@ -56,6 +56,7 @@ RUN	rm /etc/mysql/my.cnf && \
 	a2enconf php$PHP_VERS-fpm zoneminder && \
 	echo "extension=apcu.so" > /etc/php/$PHP_VERS/mods-available/apcu.ini && \
 	echo "extension=mcrypt.so" > /etc/php/$PHP_VERS/mods-available/mcrypt.ini && \
+	perl -MCPAN -e "force install inc::latest" && \
 	perl -MCPAN -e "force install Net::WebSocket::Server" && \
 	perl -MCPAN -e "force install LWP::Protocol::https" && \
 	perl -MCPAN -e "force install Config::IniFiles" && \
