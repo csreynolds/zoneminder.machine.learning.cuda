@@ -31,7 +31,7 @@ from pyzm import __version__ as pyzm_version
 
 auth_header = None
 
-__app_version__ = '6.1.23'
+__app_version__ = '6.1.28'
 
 def remote_detect(stream=None, options=None, api=None, args=None):
     # This uses mlapi (https://github.com/pliablepixels/mlapi) to run inferencing and converts format to what is required by the rest of the code.
@@ -49,6 +49,7 @@ def remote_detect(stream=None, options=None, api=None, args=None):
     login_url = api_url + '/login'
     object_url = api_url + '/detect/object?type='+model
     access_token = None
+    cmdline_image = None 
     global auth_header
 
     data_file = g.config['base_data_path'] + '/zm_login.json'
@@ -110,11 +111,11 @@ def remote_detect(stream=None, options=None, api=None, args=None):
         g.logger.Debug (2, "Reading image from {}".format(args.get('file')))
         image = cv2.imread(args.get('file'))
         if g.config['resize'] and g.config['resize'] != 'no':
-            g.logger.Debug (2,'Resizing image before sending')
-            img_new = imutils.resize(image,
-                                     width=min(int(g.config['resize']),
-                                               image.shape[1]))
+            neww = min(int(g.config['resize']),image.shape[1])
+            g.logger.Debug (2,'Resizing --file image to {}'.format(neww))
+            img_new = imutils.resize(image,width=neww)
             image = img_new
+            cmdline_image = image
             ret, jpeg = cv2.imencode('.jpg', image)
             files = {'file': ('image.jpg', jpeg.tobytes())}
 
@@ -137,7 +138,8 @@ def remote_detect(stream=None, options=None, api=None, args=None):
     }
     mid = args.get('monitorid')
     reason = args.get('reason')
-    g.logger.Debug(2,f'Invoking mlapi with url:{object_url} and json: mid={mid} reason={reason} stream={stream}, stream_options={options} ml_overrides={ml_overrides} headers={auth_header} params={params} ')
+    g.logger.Debug(2,'Invoking mlapi with url:{} and json: mid={} reason={} stream={}, stream_options={} ml_overrides={} headers={} params={} '.format(object_url,mid, reason, stream, options, ml_overrides, auth_header, params))
+    
     start = datetime.datetime.now()
     try:
         r = requests.post(url=object_url,
@@ -164,6 +166,9 @@ def remote_detect(stream=None, options=None, api=None, args=None):
     data = r.json()
     #print(r)
     matched_data = data['matched_data']
+    if args.get('file'):
+
+        matched_data['image'] = cmdline_image
     if g.config['write_image_to_zm'] == 'yes'  and matched_data['frame_id']:
         url = '{}/index.php?view=image&eid={}&fid={}'.format(g.config['portal'], stream,matched_data['frame_id'] )
         g.logger.Debug(2,'Grabbing image from {} as we need to write objdetect.jpg'.format(url))
@@ -171,8 +176,16 @@ def remote_detect(stream=None, options=None, api=None, args=None):
             response = api._make_request(url=url,  type='get')
             img = np.asarray(bytearray(response.content), dtype='uint8')
             img = cv2.imdecode (img, cv2.IMREAD_COLOR)
-            if options.get('resize') and options.get('resize') != 'no':
-                img = imutils.resize(img,width=options.get('resize'))
+           
+            #newh =matched_data['image_dimensions']['resized'][0]
+            if matched_data['image_dimensions'] and matched_data['image_dimensions']['resized']:
+                neww =min(matched_data['image_dimensions']['resized'][1], img.shape[1])
+                oldh, oldw = img.shape[:2]
+                if oldw != neww:
+                    g.logger.Debug (2, 'Resizing source image from width={} to width={} in zm_detect as that is the size mlapi used'.format(oldw, neww))
+                    img = imutils.resize(img,width=neww)
+                else:
+                    g.logger.Debug (2, 'No need to resize as image widths are same from mlapi and zm_detect: {}'.format(neww))
             matched_data['image'] = img
         except Exception as e:
             g.logger.Error ('Error during image grab: {}'.format(str(e)))
@@ -266,7 +279,7 @@ def main_handler():
     try:
         import cv2
     except ImportError as e:
-        g.logger.Fatal (f'{e}: You might not have installed OpenCV as per install instructions. Remember, it is NOT automatically installed')
+        g.logger.Fatal ('{}: You might not have installed OpenCV as per install instructions. Remember, it is NOT automatically installed'.format(e))
 
     g.logger.Info('---------| app:{}, pyzm:{}, ES:{} , OpenCV:{}|------------'.format(__app_version__,pyzm_version, es_version, cv2.__version__))
    
@@ -276,7 +289,7 @@ def main_handler():
     try:
         import zmes_hook_helpers.image_manip as img
     except Exception as e:
-        g.logger.Error (f'{e}')
+        g.logger.Error ('{}'.format(e))
         exit(1)
     g.polygons = []
 
@@ -412,11 +425,6 @@ def main_handler():
 
         matched_data,all_data = m.detect_stream(stream=stream, options=stream_options)
     
-
-
-    #print(f'ALL FRAMES: {all_data}\n\n')
-    #print (f"SELECTED FRAME {matched_data['frame_id']}, size {matched_data['image_dimensions']} with LABELS {matched_data['labels']} {matched_data['boxes']} {matched_data['confidences']}")
-    #print (matched_data)
     '''
      matched_data = {
             'boxes': matched_b,
@@ -474,7 +482,6 @@ def main_handler():
         print(pred + '--SPLIT--' + jos)
 
         if (matched_data['image'] is not None) and (g.config['write_image_to_zm'] == 'yes' or g.config['write_debug_image'] == 'yes'):
-            #print (f'********* REMOTE POLY: {remote_polygons}')
             debug_image = pyzmutils.draw_bbox(image=matched_data['image'],boxes=matched_data['boxes'], 
                                               labels=matched_data['labels'], confidences=matched_data['confidences'],
                                               polygons=matched_data['polygons'], poly_thickness = g.config['poly_thickness'],
@@ -499,7 +506,7 @@ def main_handler():
                         json.dump(obj_json, jo)
                         jo.close()
                 except Exception as e:
-                    g.logger.Error(f'Error creating {jf}:{e}')
+                    g.logger.Error('Error creating {}:{}'.format(jf,e))
                     
         if args.get('notes'):
             url = '{}/events/{}.json'.format(g.config['api_portal'], args['eventid'])
