@@ -1,4 +1,4 @@
-FROM phusion/baseimage:master as builder
+FROM nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04 as builder
 
 LABEL maintainer="dlandon"
 
@@ -17,7 +17,20 @@ ENV	DEBCONF_NONINTERACTIVE_SEEN="true" \
 	PUID="99" \
 	PGID="100"
 
-FROM builder as build1
+FROM builder as phusion
+#Section converts nvidia container to look like phusion/baseimage
+RUN apt-get update && \
+	apt-get -y install git && \
+	git clone https://github.com/phusion/baseimage-docker.git && \
+	mkdir /bd_build && \
+	cp -r baseimage-docker/image/* /bd_build/ && \
+	/bd_build/prepare.sh && \
+	/bd_build/system_services.sh && \
+	/bd_build/utilities.sh && \
+	/bd_build/cleanup.sh && \
+	rm -rf baseimage-docker /bd_build
+
+FROM phusion as build1
 COPY init/ /etc/my_init.d/
 COPY defaults/ /root/
 COPY zmeventnotification/ /root/zmeventnotification/
