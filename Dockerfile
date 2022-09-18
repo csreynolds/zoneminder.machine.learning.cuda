@@ -165,18 +165,26 @@ RUN	cd /root && \
 	rm -r opencv*
 
 FROM build7 as build8
+# copy compiled ffmpeg files, without copying nvidia dev files
+COPY --from=jrottenberg/ffmpeg:5.1-nvidia2004 /usr/local/bin /usr/local/bin/
+COPY --from=jrottenberg/ffmpeg:5.1-nvidia2004 /usr/local/share /usr/local/share/
+COPY --from=jrottenberg/ffmpeg:5.1-nvidia2004 /usr/local/lib /usr/local/lib/
+COPY --from=jrottenberg/ffmpeg:5.1-nvidia2004 /usr/local/include /usr/local/include/
+RUN echo "/usr/local/lib/" >  /etc/ld.so.conf.d/ffmpeg.conf
+
+FROM build8 as build9
 RUN	apt-get -y clean && \
 	apt-get -y autoremove && \
 	rm -rf /tmp/* /var/tmp/* && \
 	chmod +x /etc/my_init.d/*.sh
 
-FROM build8 as build9
+FROM build9 as build10
 VOLUME \
 	["/config"] \
 	["/var/cache/zoneminder"]
 
-FROM build9 as build10
+FROM build10 as build11
 EXPOSE 80 443 9000
 
-FROM build10
+FROM build11
 CMD ["/sbin/my_init"]
