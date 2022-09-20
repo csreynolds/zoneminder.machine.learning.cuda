@@ -1,24 +1,37 @@
-version: '3.1'
+version: "3.4"
 services:
-    zoneminder:
-        container_name: zoneminder
-        image: dlandon/zoneminder.machine.learning:latest
-        restart: unless-stopped
-        ports:
-            - 8443:443/tcp
-            - 9000:9000/tcp
-        network_mode: "bridge"
-        privileged: false
-        shm_size: "8gb"
-        environment:
-            - TZ=America/New_York
-            - PUID=99
-            - PGID=100
-            - MULTI_PORT_START=0
-            - MULTI_PORT_END=0
-        volumes:
-            - config:/config:rw
-            - data:/var/cache/zoneminder:rw
-volumes:
-    config:
-    data:
+  zoneminder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: masterblaster
+    ports:
+      - 8443:443
+    devices:
+      - /dev/nvidia0:/dev/nvidia0
+      - /dev/nvidiactl:/dev/nvidiactl
+      - /dev/nvidia-modeset:/dev/nvidia-modeset
+      - /dev/nvidia-uvm:/dev/nvidia-uvm
+      - /dev/nvidia-uvm-tools:/dev/nvidia-uvm-tools
+    cap_add:
+      - NET_ADMIN
+    container_name: zoneminder
+    environment:
+      - PGID=99
+      - PUID=100
+      - TZ=America/New_York
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_VISIBLE_DEVICES=all
+    logging:
+      driver: json-file
+      options:
+        max-file: 10
+        max-size: 200k
+    restart: unless-stopped
+    shm_size: "8gb"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /DockerConfig/containers/shared:/shared
+      - /media/Public:/storage
+      - ./zoneminder/config:/config
+      - ./zoneminder/data:/var/cache/zoneminder
